@@ -1,0 +1,3 @@
+pandas
+openpyxl
+blender_plots
