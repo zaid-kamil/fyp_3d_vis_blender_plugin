@@ -650,13 +650,13 @@ class DatasetHelper:
                     context.object.scale = (0, 0, 0)
                     context.object.keyframe_insert(data_path="scale", frame=anim_start_frame)
                     context.object.scale = (1, 1, 1)
-                    context.object.keyframe_insert(data_path="scale", frame=anim_start_frame + anim_length_data)
+                    context.object.keyframe_insert(data_path="scale", frame=anim_start_frame + 100)
                     
                     # add keyframes to location
                     context.object.location = (ix, iy, iz)
-                    context.object.keyframe_insert(data_path="location", frame=anim_start_frame)
+                    context.object.keyframe_insert(data_path="location", frame=anim_start_frame+1)
                     context.object.location = (ix, iy, iz)
-                    context.object.keyframe_insert(data_path="location", frame=anim_start_frame + anim_length_data)
+                    context.object.keyframe_insert(data_path="location", frame=anim_start_frame+2 + 100)
                     
                     # add text to the points in (x, y) format just above the point
                     bpy.ops.object.text_add(location=(ix, iy, iz+1 ))
@@ -669,13 +669,10 @@ class DatasetHelper:
                     text.data.materials.append(mat)
 
                     text.scale = (0, 0, 0)
-                    text.keyframe_insert(data_path="scale", frame=anim_start_frame)
+                    text.keyframe_insert(data_path="scale", frame=anim_start_frame+1)
                     text.scale = (.5, .5, .5)
-                    text.keyframe_insert(data_path="scale", frame=anim_start_frame + anim_length_data)
-                    
-                    
-                    
-                    
+                    text.keyframe_insert(data_path="scale", frame=anim_start_frame+2 + 100)
+                
                 except:
                     pass 
         except Exception as e:
