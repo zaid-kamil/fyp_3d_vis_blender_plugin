@@ -515,93 +515,92 @@ class DatasetHelper:
             
         return {'FINISHED'}
 
-    def create_area_graph(self, data_column, month_column, currency_symbol, anim_start_frame=2, anim_length_data=20, graph_start_position=1, distance_bet_points=2):
+    def create_scatter_bar_graph(self, x_column, y_column, anim_start_frame=2, anim_length_data=100, graph_start_position=1):
+        # create a histogram graph with  x and y columns of the dataframe with a z axis width of .2 
         context = bpy.context
         scene = context.scene
-
-        # Save the current location of the 3D cursor
+        # delete all objects
+        bpy.ops.object.select_all(action='SELECT')
+        bpy.ops.object.delete()
         saved_cursor_loc = scene.cursor.location.xyz
+        # generate a plane with -5 to 5 range
+        context.scene.cursor.location = (0, 0, 0)
 
-        data_list = self.df.iloc[:, data_column - 1]
-        month_list = self.df.iloc[:, month_column - 1]
-        number_of_data = len(month_list)
-        data_height_mean = sum(data_list) / number_of_data
+        # generate a maxtrix of data from x and y columns of the dataframe with a z axis width of .2
+        x = self.df.iloc[:, x_column - 1]
+        y = self.df.iloc[:, y_column - 1]
+        z = [random.uniform(-5, 5) for i in range(len(x))]
+        # normalize the data to -5 to 5 range
+        x = (x - x.min()) / (x.max() - x.min()) * 10 - 5
+        y = (y - y.min()) / (y.max() - y.min()) * 10 - 5
 
-        # Initialize the variables.
-        position_count = graph_start_position
-        anim_length_text = anim_length_data / 2
-        anim_curr_frame = anim_start_frame
-        anim_end_frame = anim_start_frame + anim_length_data * (number_of_data - 1)
+        # create spikes on the basic of x and y data
+        for ix, iy, iz in zip(x, y, z):
+            bpy.ops.mesh.primitive_cube_add(size=1, location=(ix, iy, 5))
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.subdivide(number_cuts=1)
+            bpy.ops.object.mode_set(mode='OBJECT')
 
-        normalized_data = []
-        for data in data_list:
-            normalized_data.append(data * 10 / data_height_mean)
-
-        data_height_mean = sum(normalized_data) / number_of_data
-        data_height_min = min(normalized_data)
-
-        display_data = []
-        if data_height_min > abs(data_height_mean - data_height_min):
-            for data in normalized_data:
-                display_data.append(data - data_height_min + abs(data_height_mean - data_height_min))
-        else:
-            for data in normalized_data:
-                display_data.append(data)
-
-        # Create a new material for the curve
-        material_1 = bpy.data.materials.new(name="anim_material_1")
-        material_1.use_nodes = True
-        if material_1.node_tree:
-            material_1.node_tree.links.clear()
-            material_1.node_tree.nodes.clear()
-        nodes = material_1.node_tree.nodes
-        links = material_1.node_tree.links
-        output = nodes.new(type='ShaderNodeOutputMaterial')
-        shader = nodes.new(type='ShaderNodeEmission')
-        nodes["Emission"].inputs['Color'].default_value = (1.0, 0.3, 1.0, 1)
-        nodes["Emission"].inputs['Strength'].default_value = 1.5
-        links.new(shader.outputs[0], output.inputs[0])
-
-        # Create a new material for the text
-        material_2 = bpy.data.materials.new(name="anim_material_2")
-        material_2.use_nodes = True
-        if material_2.node_tree:
-            material_2.node_tree.links.clear()
-            material_2.node_tree.nodes.clear()
-        nodes = material_2.node_tree.nodes
-        links = material_2.node_tree.links
-        output = nodes.new(type='ShaderNodeOutputMaterial')
-        shader = nodes.new(type='ShaderNodeEmission')
-        nodes["Emission"].inputs['Strength'].default_value = 3.0
-        links.new(shader.outputs[0], output.inputs[0])
-
-        # Create a new material for the x-axis
-        material_3 = bpy.data.materials.new(name="anim_material_3")
-        material_3.use_nodes = True
-        if material_3.node_tree:
-            material_3.node_tree.links.clear()
-            material_3.node_tree.nodes.clear()
-        nodes = material_3.node_tree.nodes
-        links = material_3.node_tree.links
-        output = nodes.new(type='ShaderNodeOutputMaterial')
-        shader = nodes.new(type='ShaderNodeEmission')
-        nodes["Emission"].inputs['Color'].default_value = (1.0, 0.0, 0.0, 1)
-        nodes["Emission"].inputs['Strength'].default_value = 1.5
-        links.new(shader.outputs[0], output.inputs[0])
-
-        # Create a new material for the z-axis
-        material_4 = bpy.data.materials.new(name="anim_material_4")
-        material_4.use_nodes = True
-        if material_4.node_tree:
-            material_4.node_tree.links.clear()
-            material_4.node_tree.nodes.clear()
-        nodes = material_4.node_tree.nodes
-        links = material_4.node_tree.links
-        output = nodes.new(type='ShaderNodeOutputMaterial')
-        shader = nodes.new(type='ShaderNodeEmission')
-        nodes["Emission"].inputs['Color'].default_value = (0.0, 0.0, 1.0, 1)
-        nodes["Emission"].inputs['Strength'].default_value = 1.5
-        links.new(shader.outputs[0], output.inputs[0])
+            # bevel modifier
+            bpy.ops.object.modifier_add(type='BEVEL')
+            bpy.context.object.modifiers["Bevel"].width = 3
+            bpy.context.object.modifiers["Bevel"].segments = 1
+            bpy.context.object.modifiers["Bevel"].profile = 0.5
+            # displace modifier
+            bpy.ops.object.modifier_add(type='DISPLACE')
+            bpy.context.object.modifiers["Displace"].strength = 0.2
+            bpy.context.object.modifiers["Displace"].direction = 'Z'
+            bpy.context.object.modifiers["Displace"].texture_coords = 'LOCAL'
+            bpy.context.object.modifiers["Displace"].texture = bpy.data.textures.new(name="Texture", type='CLOUDS')
+            bpy.context.object.modifiers["Displace"].texture.noise_scale = 0.5
+            bpy.context.object.modifiers["Displace"].texture.intensity = 0.5
+            bpy.context.object.modifiers["Displace"].texture.contrast = 0.5
+            bpy.context.object.modifiers["Displace"].texture.saturation = 0.5
+            bpy.context.object.modifiers["Displace"].texture.nabla = 0.5
+            bpy.context.object.modifiers["Displace"].texture.noise_basis = 'BLENDER_ORIGINAL'
+            bpy.context.object.modifiers["Displace"].texture.noise_scale = 0.5
+            bpy.context.object.modifiers["Displace"].texture.noise_type = 'SOFT_NOISE'
+            bpy.context.object.modifiers["Displace"].texture.noise_depth = 1
+            bpy.context.object.modifiers["Displace"].texture.noise_basis = 'BLENDER_ORIGINAL'
+            bpy.context.object.modifiers["Displace"].texture.use_color_ramp = True
+            bpy.context.object.modifiers["Displace"].texture.color_ramp.elements[0].position = 0.0
+            bpy.context.object.modifiers["Displace"].texture.color_ramp.elements[0].color = (0.0, 0.0, 0.0, 1)
+            bpy.context.object.modifiers["Displace"].texture.color_ramp.elements[1].position = 1.0
+            bpy.context.object.modifiers["Displace"].texture.color_ramp.elements[1].color = (1.0, 1.0, 1.0, 1)
+            bpy.context.object.modifiers["Displace"].texture.color_ramp.elements[1].alpha = 1
+            
+            # apply red or blue or green color to the spikes randomly
+            if random.choice([True, False]):
+                bpy.ops.object.material_slot_add()
+                bpy.context.object.material_slots[0].material = bpy.data.materials.new(name="Material")
+                bpy.context.object.material_slots[0].material.diffuse_color = (0, 0, 1, 1)
+            else:
+                bpy.ops.object.material_slot_add()
+                bpy.context.object.material_slots[0].material = bpy.data.materials.new(name="Material")
+                bpy.context.object.material_slots[0].material.diffuse_color = (0, 1, 0, 1)
+            # add keyframes to the spikes
+            bpy.context.object.scale = (0, 0, 0)
+            bpy.context.object.keyframe_insert(data_path="scale", frame=anim_start_frame)
+            bpy.context.object.scale = (1, 1, 1)
+            bpy.context.object.keyframe_insert(data_path="scale", frame=anim_start_frame + 150)
+           
+            
+            # resize the spikes to 5
+            bpy.ops.transform.resize(value=(1, 1, 5))
+            mesh = context.active_object
+            # add a material to the mesh
+            mat = bpy.data.materials.new('histogram_material')
+            mat.diffuse_color = (1, 0.5, 1, 0.5) # blue color
+        # create a material for the mesh
+        mat = bpy.data.materials.new('histogram_material')
+        mat.diffuse_color = (0.5, 0.5, 1, 0.5) # blue color
+        mesh.data.materials.append(mat)
+        # set the 3d cursor back to where it was
+        bpy.context.scene.cursor.location = saved_cursor_loc
+        # return the finished message
+        return {'FINISHED'}
+    
+        
         
     def create_scatter_graph(self, x_column, y_column, anim_start_frame=2, anim_length_data=10):
         r = 0.5
@@ -658,6 +657,15 @@ class DatasetHelper:
                     context.object.location = (ix, iy, iz)
                     context.object.keyframe_insert(data_path="location", frame=anim_start_frame+2 + 100)
                     
+                    # apply random colors to the points based on the z axis
+                    mat.diffuse_color = (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1), 1)
+                    
+                    # apply red or blue or green or yellow color to the points randomly
+                   
+                    # shade smooth
+                    bpy.ops.object.shade_smooth()
+                    
+                    
                     # add text to the points in (x, y) format just above the point
                     bpy.ops.object.text_add(location=(ix, iy, iz+1 ))
                     text = context.object
@@ -667,11 +675,24 @@ class DatasetHelper:
                 
                     text.data.extrude = 0.1
                     text.data.materials.append(mat)
+                    red = (1, 0, 0, 1)
+                    blue = (0, 0, 1, 1)
+                    green = (0, 1, 0, 1)
+                    
+                    if z % 2 == 0:
+                        mat.diffuse_color = red
+                    elif z % 5 == 0:
+                        mat.diffuse_color = green
+                    else:
+                        mat.diffuse_color = blue
+                        
 
                     text.scale = (0, 0, 0)
                     text.keyframe_insert(data_path="scale", frame=anim_start_frame+1)
                     text.scale = (.5, .5, .5)
                     text.keyframe_insert(data_path="scale", frame=anim_start_frame+2 + 100)
+                    
+                    
                 
                 except:
                     pass 
@@ -737,13 +758,13 @@ class AddBarChart(bpy.types.Operator):
 #########PIE CHART######################
 ########################################
 class AddAreaChart(bpy.types.Operator):
-    bl_idname = "mesh.add_area_chart"
-    bl_label = "Add Area Chart"
+    bl_idname = "mesh.add_histogram_chart"
+    bl_label = "Add Scatter Bar Chart"
 
     def execute(self, context):
         # Add custom code to create a pie chart
         dataset = DatasetHelper(context.scene.my_file_path)
-        dataset.create_area_graph(context.scene.y_axis_column, context.scene.x_axis_column, "👇", 2, 20, 1, 2)
+        dataset.create_scatter_bar_graph(context.scene.y_axis_column, context.scene.x_axis_column, 2, 20)
         print("Creating Area Chart")
         return {'FINISHED'}
     
@@ -841,7 +862,7 @@ class View3DPanel(bpy.types.Panel):
         row.operator("mesh.add_line_graph", text="Line Graph")
         row.operator("mesh.add_bar_chart", text="Bar Chart")
         row = layout.row()
-        row.operator("mesh.add_area_chart", text="Pie Chart")
+        row.operator("mesh.add_histogram_chart", text="Scatter 2 Chart")
         row.operator("mesh.add_scatter_plot", text="Scatter Plot")
         row = layout.row()
         row.operator("mesh.add_histogram", text="Histogram")
